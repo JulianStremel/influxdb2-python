@@ -1,9 +1,11 @@
-import requests
-import time 
+"""Module for interacting with InfluxDB 2.0"""
+
 import datetime
 from enum import Enum
+import requests
 
 class Status(Enum):
+    """Status codes for InfluxDB 2.0 API"""
     OK                          = 200
     NO_CONTENT                  = 204
     BAD_REQUEST                 = 400
@@ -18,29 +20,38 @@ class Status(Enum):
 
 
 class InfluxPoint:
-
+    """Class for creating InfluxDB 2.0 points"""
     def __check_key__(self, key:str):
-        if key == ""|None:
+        assert isinstance(key, str)
+        if key == "":
             raise ValueError("key cannot be empty")
         if list(key)[0] == "_":
             raise ValueError(f"key cannot start with an underscore -> {key}")
 
-    class tag:
+    class Tag:
+        """class for creating tags in InfluxDB 2.0 points"""
         def __init__(self, key:str, value:str):
             assert isinstance(key, str)
             assert isinstance(value, str)
-            if key == ""|None:
+            if key == "":
                 raise ValueError("key cannot be empty")
             if list(key)[0] == "_":
                 raise ValueError(f"key cannot start with an underscore -> {key}")
             self.key = key
             self.value = value
 
-    class field:
+        def __str__(self) -> str:
+            raise NotImplementedError("This function is not yet implemented") from None
+
+        def __repr__(self) -> str:
+            return f"Tag({self.key}, {self.value})"
+
+    class Field:
+        """class for creating fields in InfluxDB 2.0 points"""
         _type:type
         def __init__(self, key:str, value:str|float|int|bool):
             assert isinstance(key, str)
-            if key == ""|None:
+            if key == "":
                 raise ValueError("key cannot be empty")
             if list(key)[0] == "_":
                 raise ValueError(f"key cannot start with an underscore -> {key}")
@@ -48,70 +59,55 @@ class InfluxPoint:
             self.key = key
             self.value = value
 
+        def __str__(self) -> str:
+            raise NotImplementedError("This function is not yet implemented") from None
+
+        def __repr__(self) -> str:
+            return f"Field({self.key}, {self.value})"
+
     measurement:str
-    tags:list[tag]
-    fields:list[field]
+    tags:list[Tag]
+    fields:list[Field]
     timestamp:int|None
 
     def __init__(self, measurement:str):
         assert isinstance(measurement, str)
-        if measurement == ""|None:
+        if measurement == "":
             raise ValueError("measurement cannot be empty")
         if list(measurement)[0] == "_":
             raise ValueError(f"measurement cannot start with an underscore -> {measurement}")
         self.measurement = measurement
         self.timestamp = None
-        self.tags = {}
-        self.fields = {}
-    
+        self.tags = []
+        self.fields = []
+
     def add_tag(self, key:str, value:str):
-        tag = self.tag(key, value)
-        if tag.key in self.tags.keys():
-            raise ValueError("Tag already exists")
+        """add a tag to the point"""
+        tag = self.Tag(key, value)
         self.tags.append(tag)
-    
+
     def add_field(self, key:str, value:str):
-        field = self.field(key, value)
-        if field.key in self.fields.keys():
-            raise ValueError("Field already exists")
+        """add a field to the point"""
+        field = self.Field(key, value)
         self.fields.append(field)
-    
+
     def add_timestamp(self, timestamp:int):
+        """add a timestamp to the point"""
         assert isinstance(timestamp, int)
         try:
             datetime.datetime.fromtimestamp(timestamp)
         except:
-            raise ValueError("Invalid timestamp")
+            raise ValueError("Invalid timestamp") from None
         self.timestamp = timestamp
 
     def __str__(self):
-        first = True
-        for key, value in self.tags.items():
-            if value == ""|None:
-                continue 
-            if first:
-                tags += f"{key}={value}"
-                first = False
-            else:
-                tags += f",{key}={value}"
-        tags+= " "
-
-        first = True
-        for key, value in self.fields.items():
-            if first:
-                fields += f"{key}={value}"
-                first = False
-            else:
-                fields += f",{key}={value}"
-        fields+= " "
-
-        return f"{self.measurement},{self.tags}, Fields: {self.fields}, Timestamp: {self.timestamp}, Precision: {self.precision}"
+        raise NotImplementedError("This function is not yet implemented")
 
 
 
 
 class InfluxClient:
-
+    """Class for interacting with InfluxDB 2.0"""
     endpoint:str = "/api/v2/"
     url:str
     token:str
@@ -133,30 +129,32 @@ class InfluxClient:
         self.session.headers.update({
             "Authorization": f"Token {self.token}"
         })
-    
+
     def __match_status__(self, status:int) -> tuple[bool,str|None]:
+        ret = None
         match status:
             case Status.OK:
-                return (True, None)
+                ret = (True, None)
             case Status.BAD_REQUEST:
-                return (False, "Bad request")
+                ret = (False, "Bad request")
             case Status.UNAUTHORIZED:
-                return (False, "Unauthorized")
+                ret = (False, "Unauthorized")
             case Status.REQUEST_ENTITY_TOO_LARGE:
-                return (False, "Request entity too large")
+                ret = (False, "Request entity too large")
             case Status.UNPROCESSABLE_ENTITY:
-                return (False, "Unprocessable entity")
+                ret = (False, "Unprocessable entity")
             case Status.TOO_MANY_REQUESTS:
-                return (False, "Too many requests")
+                ret = (False, "Too many requests")
             case Status.INTERNAL_SERVER_ERROR:
-                return (False, "Internal server error")
+                ret = (False, "Internal server error")
             case Status.SERVICE_UNAVAILABLE:
-                return (False, "Service unavailable")
+                ret = (False, "Service unavailable")
             case _:
-                return (False, f"Unknown statuscode {status} ")
-
+                ret = (False, f"Unknown statuscode {status} ")
+        return ret
     # POST
     def write(self, point:InfluxPoint) -> tuple[bool,str|None]:
+        """write a point to the database"""
         assert isinstance(point, InfluxPoint)
         url = f"{self.url}{self.endpoint}write"
         params = {
@@ -172,21 +170,26 @@ class InfluxClient:
         return self.__match_status__(session.status_code)
 
     #POST
-    def run() -> tuple[bool,str|None]:
+    def run(self) -> tuple[bool,str|None]:
+        """run a task in the database"""
         raise NotImplementedError("This function is not yet implemented")
-    
+
     #GET
-    def list() -> tuple[bool,str|None]:
+    def list(self) -> tuple[bool,str|None]:
+        """list all tasks in the database"""
         raise NotImplementedError("This function is not yet implemented")
 
     #POST
-    def create() -> tuple[bool,str|None]:
+    def create(self) -> tuple[bool,str|None]:
+        """create a task in the database"""
         raise NotImplementedError("This function is not yet implemented")
 
     #PUT
-    def update() -> tuple[bool,str|None]:
+    def update(self) -> tuple[bool,str|None]:
+        """update a task in the database"""
         raise NotImplementedError("This function is not yet implemented")
 
     #DELETE
-    def delete() -> tuple[bool,str|None]:
+    def delete(self) -> tuple[bool,str|None]:
+        """delete a task in the database"""
         raise NotImplementedError("This function is not yet implemented")
